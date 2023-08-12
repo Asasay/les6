@@ -41,8 +41,15 @@ sequelize
   .catch((error) =>
     logger.error("Sequelize was unable to connect to the database:", error)
   );
-
-const Message = sequelize.define(
+interface MessageModel
+  extends Model<
+    InferAttributes<MessageModel>,
+    InferCreationAttributes<MessageModel>
+  > {
+  id?: CreationOptional<number>;
+  text: string;
+}
+const Message = sequelize.define<MessageModel>(
   "message",
   {
     text: {
@@ -104,6 +111,7 @@ Message.getMessageHistory = async function () {
   });
   const transformed = history.map((m) => m.toJSON());
   return transformed.map((m) => {
+    // @ts-ignore
     return { text: m.text, tags: m.tags.map((t: { tag: string }) => t.tag) };
   });
 };

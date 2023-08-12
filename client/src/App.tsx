@@ -65,7 +65,7 @@ function App() {
         component="main"
         sx={{
           display: "flex",
-          height: "100vh",
+          height: "100dvh",
           gap: 1,
         }}
       >
@@ -76,7 +76,7 @@ function App() {
             justifyContent: "flex-end",
             alignItems: "center",
             gap: 2,
-            flex: 1,
+            flex: "1 4 20%",
             margin: 1,
           }}
         >
@@ -96,7 +96,7 @@ function App() {
             display: "flex",
             flexDirection: "column",
             justifyContent: "flex-end",
-            flex: 4,
+            flex: "4 1 75%",
             margin: 1,
           }}
         >
