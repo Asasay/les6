@@ -1,4 +1,4 @@
-import { Sequelize, DataTypes, Model } from "sequelize";
+import { Sequelize, DataTypes } from "sequelize";
 import dotenv from "dotenv";
 import logger from "./logger";
 
@@ -61,7 +61,10 @@ Tag.belongsToMany(Message, { through: "message_tags" });
   await sequelize.sync();
 })();
 
-Message.createNewMessage = async function (message) {
+Message.createNewMessage = async function (message: {
+  text: string;
+  tags: string[];
+}) {
   const newMessage = await Message.create({
     text: message.text,
   });
