@@ -1,8 +1,9 @@
 import express from "express";
-import Message from "./db";
+import Message, { Tag } from "./db";
 import http from "http";
 import { Server } from "socket.io";
 import "dotenv/config";
+import logger from "./logger";
 
 const app = express();
 const server = http.createServer(app);
@@ -12,31 +13,49 @@ const port = process.env.SERVER_PORT;
 
 app.use(express.static(__dirname + "/public"));
 app.get("/", (req, res) => {
-  res.sendFile("/public/index.html");
-});
-app.get("/api/messages", (req, res) => {
-  Message.findAll().then((messages) => res.json(messages));
+  res.sendFile("index.html");
 });
 
 io.on("connection", (socket) => {
-  console.log("User connected: " + socket.id);
+  logger.info("User connected: " + socket.id);
 
   socket.onAny((event, ...args) => {
-    console.log(`Got event ${event}: ${args}`);
+    logger.info(
+      `Got "${event}" event ${
+        args.length > 0 ? ": " + args : "without any arguments"
+      }`
+    );
   });
 
+  socket.on("initialize", () => {
+    Message.getMessageHistory().then((history) =>
+      socket.emit("initialize", history)
+    );
+    emitTags();
+  });
+
+  const emitTags = async () => {
+    const allTags = await Tag.findAll({ attributes: ["name"], raw: true });
+    socket.emit(
+      "get tags",
+      allTags.map((tag) => tag.name)
+    );
+  };
+
+  socket.on("get tags", emitTags);
+
   socket.on("chat message", ({ tags, text }) => {
-    Message.create({ tags, text });
+    Message.createNewMessage({ tags, text });
     io.emit("chat message", { tags, text });
   });
 
   socket.on("disconnect", async () => {
-    console.log("user disconnected: " + socket.id);
+    logger.info("user disconnected: " + socket.id);
     const sockets = await io.fetchSockets();
-    console.log("Connected users: " + sockets.map((conn) => conn.id));
+    logger.info("Connected users: " + sockets.map((conn) => conn.id));
   });
 });
 
 server.listen(port, () => {
-  console.log(`⚡️[server]: Server is running at http://localhost:${port}`);
+  logger.info(`⚡️[server]: Server is running at port: ${port}`);
 });

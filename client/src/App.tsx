@@ -1,21 +1,21 @@
 import { MessagesList } from "./components/MessagesList";
 import { SendMessageBar } from "./components/SendMessageBar";
-import { createRef, useEffect, useMemo, useState } from "react";
+import { createRef, useEffect, useState } from "react";
 import io from "socket.io-client";
 import { ConnectionState } from "./components/ConnectionState";
 import {
   Autocomplete,
+  Box,
   Chip,
-  CircularProgress,
   CssBaseline,
-  Grid,
+  Divider,
   TextField,
   ThemeProvider,
-  createTheme,
-  useMediaQuery,
 } from "@mui/material";
 import { ConnectionManager } from "./components/ConnectionManager";
 import useSocket from "./hooks/useSocket";
+import useTheme from "./hooks/useTheme";
+import Filter from "./components/Filter";
 
 export const socket = io();
 
@@ -26,36 +26,25 @@ export type Message = {
 
 function App() {
   const [messages, setMessages] = useState<Message[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [availableTags, setAvailableTags] = useState<Message["tags"]>([]);
+  const [inputTags, setInputTags] = useState<Message["tags"]>([]);
+  const [tagFilter, setTagFilter] = useState<Message["tags"]>([]);
+  const [filteredMessages, setfilteredMessages] = useState<Message[]>([]);
   const messagesWindowRef = createRef<HTMLUListElement>();
-  const isConnected = useSocket(setMessages);
+  const isConnected = useSocket(setMessages, setAvailableTags);
 
-  const prefersDarkMode = useMediaQuery("(prefers-color-scheme: dark)");
-
-  const theme = useMemo(
-    () =>
-      createTheme({
-        palette: {
-          mode: prefersDarkMode ? "dark" : "light",
-        },
-      }),
-    [prefersDarkMode]
-  );
+  const theme = useTheme();
 
   useEffect(() => {
-    const abortController = new AbortController();
-    setLoading(true);
-    fetch(`/api/messages`, { signal: abortController.signal })
-      .then((res) => res.json())
-      .then((messages) => setMessages(messages))
-      .finally(() => {
-        setLoading(false);
+    if (tagFilter.length == 0) setfilteredMessages(messages);
+    else {
+      const filtered = messages.filter((m) => {
+        if (m.tags.length == 0) return true;
+        else return tagFilter.some((t) => m.tags.includes(t));
       });
-
-    return () => {
-      abortController.abort();
-    };
-  }, []);
+      setfilteredMessages(filtered);
+    }
+  }, [tagFilter, messages]);
 
   useEffect(() => {
     const messagesWindow = messagesWindowRef.current;
@@ -71,43 +60,57 @@ function App() {
 
   return (
     <ThemeProvider theme={theme}>
-      <Grid
-        container
+      <CssBaseline />
+      <Box
         component="main"
         sx={{
-          alignItems: "flex-end",
-          p: "10px",
+          display: "flex",
           height: "100vh",
-          flexWrap: "nowrap",
-          columnGap: "20px",
+          gap: 1,
         }}
       >
-        <CssBaseline />
-        <Grid item container xs={2}>
-          <ConnectionState isConnected={isConnected} />
-          <ConnectionManager />
-        </Grid>
-        <Grid
-          container
-          item
-          xs={10}
+        <Box
           sx={{
+            display: "flex",
             flexDirection: "column",
-            flexWrap: "nowrap",
-            maxHeight: "100%",
-            rowGap: "10px",
+            justifyContent: "flex-end",
+            alignItems: "center",
+            gap: 2,
+            flex: 1,
+            margin: 1,
           }}
         >
-          {!loading ? (
-            <MessagesList ref={messagesWindowRef} messages={messages} />
-          ) : (
-            <CircularProgress />
-          )}
+          <Filter
+            availableTags={availableTags}
+            tagFilter={tagFilter}
+            setTagFilter={setTagFilter}
+          />
+          <Divider flexItem variant="fullWidth" />
+          <ConnectionState isConnected={isConnected} />
+          <ConnectionManager />
+        </Box>
+
+        <Divider orientation="vertical" flexItem variant="fullWidth" />
+        <Box
+          sx={{
+            display: "flex",
+            flexDirection: "column",
+            justifyContent: "flex-end",
+            flex: 4,
+            margin: 1,
+          }}
+        >
+          <MessagesList ref={messagesWindowRef} messages={filteredMessages} />
           <Autocomplete
             multiple
             id="tags-filled"
-            options={["asdasd", "s", "dsa", "asdas"]}
+            options={availableTags}
             freeSolo
+            value={inputTags}
+            onChange={(_, newValue) => {
+              setInputTags(newValue);
+            }}
+            onFocus={() => socket.emit("get tags")}
             renderTags={(value, getTagProps) =>
               value.map((option, index) => (
                 <Chip
@@ -120,15 +123,15 @@ function App() {
             renderInput={(params) => (
               <TextField
                 {...params}
-                variant="filled"
+                variant="outlined"
                 label="Tags:"
                 placeholder="Tag your message"
               />
             )}
           />
-          <SendMessageBar />
-        </Grid>
-      </Grid>
+          <SendMessageBar inputTags={inputTags} />
+        </Box>
+      </Box>
     </ThemeProvider>
   );
 }

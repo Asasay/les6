@@ -1,27 +1,25 @@
 import { Dispatch, useEffect, useState } from "react";
 import { Message, socket } from "../App";
 
-const useSocket = (setMessages: Dispatch<React.SetStateAction<Message[]>>) => {
+const useSocket = (
+  setMessages: Dispatch<React.SetStateAction<Message[]>>,
+  setAvailableTags: Dispatch<React.SetStateAction<Message["tags"]>>
+) => {
   const [isConnected, setIsConnected] = useState(socket.connected);
 
   useEffect(() => {
-    function onConnect() {
+    socket.on("connect", () => {
       setIsConnected(true);
-    }
-    function onDisconnect() {
-      setIsConnected(false);
-    }
-    function onChatMessage(msg: Message) {
-      setMessages((previous) => [...previous, msg]);
-    }
-    socket.on("connect", onConnect);
-    socket.on("disconnect", onDisconnect);
-    socket.on("chat message", onChatMessage);
-
+      socket.emit("initialize");
+    });
+    socket.on("disconnect", () => setIsConnected(false));
+    socket.on("initialize", (args: Message[]) => setMessages(args));
+    socket.on("chat message", (msg: Message) =>
+      setMessages((previous) => [...previous, msg])
+    );
+    socket.on("get tags", (args: Message["tags"]) => setAvailableTags(args));
     return () => {
-      socket.off("connect", onConnect);
-      socket.off("disconnect", onDisconnect);
-      socket.off("chat message", onChatMessage);
+      socket.off();
     };
   }, []);
 

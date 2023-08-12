@@ -1,4 +1,4 @@
-import { Button, Grid } from "@mui/material";
+import { Button, Stack } from "@mui/material";
 import { socket } from "../App";
 
 export function ConnectionManager() {
@@ -11,13 +11,11 @@ export function ConnectionManager() {
   }
 
   return (
-    <>
-      <Grid item component={Button} onClick={connect} xs={6}>
-        Connect
-      </Grid>
-      <Grid item component={Button} onClick={disconnect} xs={6}>
-        Disconnect
-      </Grid>
-    </>
+    <Stack
+      sx={{ flexDirection: "row", flexWrap: "wrap", justifyContent: "center" }}
+    >
+      <Button onClick={connect}>Connect</Button>
+      <Button onClick={disconnect}>Disconnect</Button>
+    </Stack>
   );
 }

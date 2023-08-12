@@ -1,5 +1,6 @@
 import { Sequelize, DataTypes, Model } from "sequelize";
 import dotenv from "dotenv";
+import logger from "./logger";
 
 const environment = process.env.NODE_ENV || "development";
 if (environment == "development") {
@@ -21,37 +22,75 @@ const sequelize = new Sequelize(
   {
     host: process.env.DB_HOST,
     dialect: "mysql",
+    logging: (msg) => logger.debug(msg),
   }
 );
 
 sequelize
   .authenticate()
   .then(() =>
-    console.log("Sequelize connection has been established successfully.")
+    logger.info("Sequelize connection has been established successfully.")
   )
   .catch((error) =>
-    console.error("Sequelize was unable to connect to the database:", error)
+    logger.error("Sequelize was unable to connect to the database:", error)
   );
 
-export default class Message extends Model {}
-
-Message.init(
+const Message = sequelize.define(
+  "message",
   {
-    id: {
-      type: DataTypes.INTEGER,
-      autoIncrement: true,
-      primaryKey: true,
-      allowNull: false,
-    },
-    tags: {
-      type: DataTypes.JSON,
-    },
     text: {
       type: DataTypes.STRING,
       allowNull: false,
     },
   },
-  { sequelize, updatedAt: false }
+  {
+    updatedAt: false,
+  }
 );
 
-Message.sync();
+export const Tag = sequelize.define(
+  "tag",
+  { name: { type: DataTypes.STRING } },
+  { timestamps: false }
+);
+
+Message.belongsToMany(Tag, { through: "message_tags" });
+Tag.belongsToMany(Message, { through: "message_tags" });
+
+(async () => {
+  await sequelize.sync();
+})();
+
+Message.createNewMessage = async function (message) {
+  const newMessage = await Message.create({
+    text: message.text,
+  });
+
+  const newTags = await Promise.all(
+    message.tags.map(async (tag: string) => {
+      const [newTag] = await Tag.findOrCreate({ where: { name: tag } });
+      return newTag;
+    })
+  );
+
+  newMessage.addTags(newTags, { through: "message_tags" });
+};
+
+Message.getMessageHistory = async function () {
+  const history = await Message.findAll({
+    attributes: ["text"],
+    include: [
+      {
+        model: Tag,
+        attributes: [["name", "tag"]],
+        through: { attributes: [] },
+      },
+    ],
+  });
+  const transformed = history.map((m) => m.toJSON());
+  return transformed.map((m) => {
+    return { text: m.text, tags: m.tags.map((t) => t.tag) };
+  });
+};
+
+export default Message;

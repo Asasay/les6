@@ -1,14 +1,14 @@
-import { Button, Grid, TextField } from "@mui/material";
+import { Box, Button, TextField } from "@mui/material";
 import { FormEventHandler, useState } from "react";
-import { socket } from "../App";
+import { Message, socket } from "../App";
 
-export function SendMessageBar() {
+export function SendMessageBar({ inputTags }: { inputTags: Message["tags"] }) {
   const [input, setInput] = useState("");
   const sendMessage: FormEventHandler<HTMLFormElement> = (e) => {
     e.preventDefault();
     if (input) {
       socket.emit("chat message", {
-        tags: ["dd", "asd"],
+        tags: inputTags,
         text: input,
       });
       setInput("");
@@ -16,21 +16,17 @@ export function SendMessageBar() {
   };
 
   return (
-    <Grid container alignItems="center" component="form" onSubmit={sendMessage}>
-      <Grid item xs>
-        <TextField
-          fullWidth
-          id="input"
-          autoComplete="off"
-          label="Message"
-          variant="outlined"
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-        />
-      </Grid>
-      <Grid item xs="auto">
-        <Button type="submit">Send</Button>
-      </Grid>
-    </Grid>
+    <Box component="form" onSubmit={sendMessage}>
+      <TextField
+        fullWidth
+        id="input"
+        autoComplete="off"
+        label="Message"
+        variant="filled"
+        value={input}
+        onChange={(e) => setInput(e.target.value)}
+        InputProps={{ endAdornment: <Button type="submit">Send</Button> }}
+      />
+    </Box>
   );
 }
