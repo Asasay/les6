@@ -1,4 +1,11 @@
-import { Sequelize, DataTypes } from "sequelize";
+import {
+  Sequelize,
+  DataTypes,
+  Model,
+  InferAttributes,
+  InferCreationAttributes,
+  CreationOptional,
+} from "sequelize";
 import dotenv from "dotenv";
 import logger from "./logger";
 
@@ -47,8 +54,12 @@ const Message = sequelize.define(
     updatedAt: false,
   }
 );
-
-export const Tag = sequelize.define(
+interface TagModel
+  extends Model<InferAttributes<TagModel>, InferCreationAttributes<TagModel>> {
+  id?: CreationOptional<number>;
+  name: string;
+}
+export const Tag = sequelize.define<TagModel>(
   "tag",
   { name: { type: DataTypes.STRING } },
   { timestamps: false }
@@ -60,7 +71,7 @@ Tag.belongsToMany(Message, { through: "message_tags" });
 (async () => {
   await sequelize.sync();
 })();
-
+// @ts-ignore
 Message.createNewMessage = async function (message: {
   text: string;
   tags: string[];
@@ -75,10 +86,11 @@ Message.createNewMessage = async function (message: {
       return newTag;
     })
   );
-
+  // @ts-ignore
   newMessage.addTags(newTags, { through: "message_tags" });
 };
 
+// @ts-ignore
 Message.getMessageHistory = async function () {
   const history = await Message.findAll({
     attributes: ["text"],
@@ -92,7 +104,7 @@ Message.getMessageHistory = async function () {
   });
   const transformed = history.map((m) => m.toJSON());
   return transformed.map((m) => {
-    return { text: m.text, tags: m.tags.map((t) => t.tag) };
+    return { text: m.text, tags: m.tags.map((t: { tag: string }) => t.tag) };
   });
 };
 

@@ -28,6 +28,7 @@ io.on("connection", (socket) => {
   });
 
   socket.on("initialize", () => {
+    // @ts-ignore
     Message.getMessageHistory().then((history) =>
       socket.emit("initialize", history)
     );
@@ -45,6 +46,7 @@ io.on("connection", (socket) => {
   socket.on("get tags", emitTags);
 
   socket.on("chat message", ({ tags, text }) => {
+    // @ts-ignore
     Message.createNewMessage({ tags, text });
     io.emit("chat message", { tags, text });
   });
